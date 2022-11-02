@@ -17,11 +17,15 @@ services:
       - "15672"  
     restart: "always"
 
-  receiver:
-    image: receiver
+  sub_directory_scan:
+    image: sub_directory_scan
     build: 
-      context: ./receiver
+      context: ./sub_directory_scan
       dockerfile: Dockerfile
+    volumes:
+      - type: bind
+        source: /Users/cliscoet/Downloads/test
+        target: /src
     depends_on: 
       - rabbit
     restart: "on-failure:10"

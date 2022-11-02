@@ -9,7 +9,7 @@ from datetime import datetime
 from os import path
 
 
-def init_folder_scan(folder_path, scan_time=3, current_size=None, current_ts=None,):
+def folder_scan(folder_path, scan_time=3, current_size=None, current_ts=None,):
     current_size = len(pt.get_folder_object_from_dir(folder_path)) if current_size is None else current_size
     current_ts= datetime.now().timestamp() if current_ts is None else current_ts
     
@@ -86,9 +86,9 @@ def send(i, connection):
     
     channel = connection.channel()
 
-    channel.queue_declare(queue='subfolder')
+    channel.queue_declare(queue='subdir')
 
-    channel.basic_publish(exchange='', routing_key='subfolder', body=i)
+    channel.basic_publish(exchange='', routing_key='subdir', body=i)
     
     print(f"{i} sent to queue")
     
@@ -98,14 +98,7 @@ def send(i, connection):
 
 if __name__ == '__main__':
     
-    print('hello')
-    
-    print(pt.get_folder_object_from_dir('/src'))
-    
-    init_folder_scan('/src')
+    folder_scan('/src')
     
         
-    
-# assuming there's a working local RabbitMQ server with a working # guest/guest account
-# def message(topic, message):
     
