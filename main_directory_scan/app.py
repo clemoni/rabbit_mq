@@ -8,10 +8,36 @@ from datetime import datetime
 
 from os import path
 
+import functools
 
-def folder_scan(folder_path, scan_time=3, current_size=None, current_ts=None,):
-    current_size = len(pt.get_folder_object_from_dir(folder_path)) if current_size is None else current_size
+def manage_rabbit_connection(fn):
+    @functools.wraps(fn)
+    def wrapper(*args, target_name):
+        connection = pika.BlockingConnection(pika.ConnectionParameters(target_name))
+        
+        fn(*args, connection)
+        
+        connection.close()
+    return wrapper
+
+@manage_rabbit_connection
+def send_to_queue(queue_name, value, connection):
+    
+    channel = connection.channel()
+
+    channel.queue_declare(queue=queue_name)
+
+    channel.basic_publish(exchange='', routing_key=queue_name, body=value)
+    
+    print(f"{value} sent to queue")
+    
+
+
+def scan_folder(folder_path, target_object, scan_time=3, current_size=None, current_ts=None):
+    get_target_object=pt.get_folder_object_from_dir if target_object=='folder' else pt.get_file_object_from_dir
+    current_size = len(get_target_object(folder_path)) if current_size is None else current_size
     current_ts= datetime.now().timestamp() if current_ts is None else current_ts
+    
     
     folder_scan_dict={
         'current_size':current_size,
@@ -19,86 +45,58 @@ def folder_scan(folder_path, scan_time=3, current_size=None, current_ts=None,):
     }
     
    
-    def collect_current_size(folder_path):
-            
-        return len(pt.get_folder_object_from_dir(folder_path))
+    def get_folder_size(folder_path):
+        
+        return len(get_target_object(folder_path))
     
         
-    def collect_new_folder_created():
-        folder_collect=pt.get_folder_object_from_dir(folder_path)
+    def get_new_target_created():
+        
+        folder_collect=get_target_object(folder_path)
             
         return [folder for folder in folder_collect if path.getctime(folder.path) > folder_scan_dict['current_ts']]
         
         
         
-    def r_get_earliest_ts_from_new_folder(new_folder_list, current_ts, save_list=None, earliest_ts=None):
-        save_list=new_folder_list.copy() if save_list is None else save_list
+    def r_get_earliest_ts_from_new_target(target_object_list, current_ts, save_list=None, earliest_ts=None):
+        save_list=target_object_list.copy() if save_list is None else save_list
         earliest_ts=current_ts if earliest_ts is None else earliest_ts
     
         if len(save_list)==0:
             return earliest_ts
         else:
-            current_folder=save_list.pop(0)
+            current_target=save_list.pop(0)
                 
-            folder_ctime=path.getctime(current_folder.path)
+            target_ctime=path.getctime(current_target.path)
                 
-            earliest_ts= folder_ctime if earliest_ts < folder_ctime else earliest_ts
+            earliest_ts= target_ctime if earliest_ts < target_ctime else earliest_ts
                 
-            return r_get_earliest_ts_from_new_folder(new_folder_list, current_ts, save_list, earliest_ts)
-            
-        
-        
+            return r_get_earliest_ts_from_new_target(target_object_list, current_ts, save_list, earliest_ts)
+
             
     while True:
-                
-        print('new_loop')
-        
-        print('test', pt.get_folder_object_from_dir('/src'))
-                
-        new_size=collect_current_size(folder_path)
+                                
+        new_size=get_folder_size(folder_path)
                 
         if new_size > folder_scan_dict['current_size']:
-            
-            connection = pika.BlockingConnection(pika.ConnectionParameters('rabbit'))
-                    
-            new_folders_list=collect_new_folder_created()
-                    
-            for new_folder in new_folders_list:
                 
-                send(new_folder.path, connection)
+            target_object_list=get_new_target_created()
+                    
+            for target_object in target_object_list:
+                
+                send_to_queue('subdir', target_object.path, target_name='rabbit')
                     
             folder_scan_dict['current_size']=new_size
                     
-            folder_scan_dict['current_ts']=r_get_earliest_ts_from_new_folder(new_folders_list, folder_scan_dict['current_ts'])
-            
-            connection.close()
-                    
-        sleep(scan_time)
-                
-       
-
-        
-
-
-def send(i, connection):
-    
-    # connection = pika.BlockingConnection(pika.ConnectionParameters('rabbit'))
-    
-    channel = connection.channel()
-
-    channel.queue_declare(queue='subdir')
-
-    channel.basic_publish(exchange='', routing_key='subdir', body=i)
-    
-    print(f"{i} sent to queue")
-    
-
-
+            folder_scan_dict['current_ts']=r_get_earliest_ts_from_new_target(target_object_list, folder_scan_dict['current_ts'])  
+                   
+        sleep(scan_time)       
 
 
 if __name__ == '__main__':
     
-    folder_scan('/src')
+    print('hello')
+    
+    scan_folder('/src', 'folder')
     
         
-    
