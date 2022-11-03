@@ -1,5 +1,6 @@
 version: '3.9'
 
+
 services:
   rabbit:
     image: rabbitmq:3.8.5-management
@@ -17,6 +18,20 @@ services:
       - "15672"  
     restart: "always"
 
+  main_directory_scan:
+    image: dir_scan
+    build: 
+      context: ./main_directory_scan
+      dockerfile: Dockerfile
+    volumes:
+      - type: bind
+        source: /Users/cliscoet/Downloads/test
+        target: /src
+    depends_on: 
+      - rabbit
+    restart: "on-failure:10"
+    tty: true
+
   sub_directory_scan:
     image: sub_directory_scan
     build: 
@@ -32,11 +47,10 @@ services:
     tty: true
   
 
-
-  main_directory_scan:
-    image: dir_scan
+  sound_test_1:
+    image: sound_test
     build: 
-      context: ./main_directory_scan
+      context: ./sound_test
       dockerfile: Dockerfile
     volumes:
       - type: bind
@@ -46,6 +60,24 @@ services:
       - rabbit
     restart: "on-failure:10"
     tty: true
+
+  sound_test_2:
+    image: sound_test
+    build: 
+      context: ./sound_test
+      dockerfile: Dockerfile
+    volumes:
+      - type: bind
+        source: /Users/cliscoet/Downloads/test
+        target: /src
+    depends_on: 
+      - rabbit
+    restart: "on-failure:10"
+    tty: true
+
+
+
+
 
 
 

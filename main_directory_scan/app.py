@@ -29,7 +29,7 @@ def send_to_queue(queue_name, value, connection):
 
     channel.basic_publish(exchange='', routing_key=queue_name, body=value)
     
-    print(f"{value} sent to queue")
+    print(f"{value} sent to queue {queue_name}")
     
 
 

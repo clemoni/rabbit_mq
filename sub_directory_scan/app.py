@@ -28,7 +28,7 @@ def send_to_queue(queue_name, value, connection):
 
     channel.basic_publish(exchange='', routing_key=queue_name, body=value)
     
-    print(f"{value} sent to queue")
+    print(f"{value} sent to queue {queue_name}")
 
 
 
@@ -84,7 +84,10 @@ def scan_folder(folder_path, target_object, scan_time=3, current_size=None, curr
                     
             for target_object in target_object_list:
                 
-                send_to_queue('files', target_object.path, target_name='rabbit')
+                send_to_queue('sound_test', target_object.path, target_name='rabbit')
+                
+                # send_to_queue('image_test', target_object.path, target_name='rabbit')
+                
                     
             folder_scan_dict['current_size']=new_size
                     
@@ -97,6 +100,7 @@ def scan_folder(folder_path, target_object, scan_time=3, current_size=None, curr
 def create_subfolder_scan_process(folder_path):     
         
     process = Process(target=scan_folder, args=(folder_path, 'file'))
+    
     process.start()
     
 
@@ -105,7 +109,7 @@ def create_subfolder_scan_process(folder_path):
 
 def callback(ch, method, properties, body):
     
-    print(f"Received from queue {body}")
+    print(f"Received from queue value {body}")
     
     create_subfolder_scan_process(body)
     
@@ -124,6 +128,8 @@ def main():
 
 
     channel.basic_consume(queue='subdir', on_message_callback=callback, auto_ack=True)
+    
+    
     
 
     print(' [*] Waiting for messages. To exit press CTRL+C')
